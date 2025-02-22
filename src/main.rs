@@ -5,7 +5,9 @@ use physics::Simulation;
 
 #[macroquad::main("Cloth Sim")]
 async fn main() {
-    let mut simulation = Simulation::new();
-    simulation.initialize(10, 10, 20.0, 20.0);
+    const X_COUNT: i32 = 21;
+    const Y_COUNT: i32 = 21;
+    let mut simulation = Simulation::new(X_COUNT * Y_COUNT);
+    simulation.initialize(21, 21, 20.0, 20.0, 100.0, 100.0);
     renderer::run(simulation).await;
 }
