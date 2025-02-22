@@ -1,16 +1,31 @@
-use macroquad::prelude::*;
+const X_COUNT: i32 = 2;
+const Y_COUNT: i32 = 2;
+const X_GAP: i32 = 10;
+const Y_GAP: i32 = 10;
 
-#[macroquad::main("BasicShapes")]
-async fn main() {
-    loop {
-        clear_background(WHITE);
+struct Node {
+    curr_pos: (i32, i32),
+    prev_pos: (i32, i32),
+}
 
-        draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
-        draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
-        draw_circle(screen_width() - 30.0, screen_height() - 30.0, 15.0, YELLOW);
+fn print_node(n: Node) {
+    println!("[curr_pos]: x: {}, y: {}", n.curr_pos.0, n.curr_pos.1);
+    println!("[prev_pos]: x: {}, y: {}", n.prev_pos.0, n.prev_pos.1);
+}
 
-        draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
+fn main() {
+    let mut points: Vec<Node> = Vec::new();
 
-        next_frame().await
+    for x in 0..X_COUNT {
+        for y in 0..Y_COUNT {
+            points.push(Node {
+                curr_pos: (x * X_GAP, y * Y_GAP),
+                prev_pos: (x * X_GAP, y * Y_GAP),
+            });
+        }
+    }
+
+    for point in points {
+        print_node(point);
     }
 }
