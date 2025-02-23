@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 const GRAVITY: (f32, f32) = (0.0, 90.8);
 const DIST: f32 = 20.0;
 
@@ -30,18 +27,26 @@ impl Node {
 }
 
 pub struct Link {
-    pub a: Rc<RefCell<Node>>,
-    pub b: Rc<RefCell<Node>>,
+    pub a: usize,
+    pub b: usize,
     pub dist: f32,
 }
 
 impl Link {
-    pub fn new(a: Rc<RefCell<Node>>, b: Rc<RefCell<Node>>, dist: f32) -> Self {
+    pub fn new(a: usize, b: usize, dist: f32) -> Self {
         Self { a, b, dist }
     }
-    pub fn update(&mut self, dt: f32) {
-        let mut la = self.a.borrow_mut();
-        let mut lb = self.b.borrow_mut();
+    pub fn update(&mut self, nodes: &mut [Node], dt: f32) {
+        let i = self.a;
+        let j = self.b;
+
+        let (la, lb) = if i < j {
+            let (first, second) = nodes.split_at_mut(j);
+            (&mut first[i], &mut second[0])
+        } else {
+            let (first, second) = nodes.split_at_mut(i);
+            (&mut second[0], &mut first[j])
+        };
 
         let axis = (la.curr_pos.0 - lb.curr_pos.0, la.curr_pos.1 - lb.curr_pos.1);
         let dist = f32::sqrt(axis.0 * axis.0 + axis.1 * axis.1);
@@ -49,21 +54,19 @@ impl Link {
         let n = (axis.0 / dist, axis.1 / dist);
 
         if !la.immovable {
-            let new_pos_x = la.curr_pos.0 + 0.5 * delta * dt * n.0;
-            let new_pos_y = la.curr_pos.1 + 0.5 * delta * dt * n.1;
-            la.curr_pos = (new_pos_x, new_pos_y);
+            la.curr_pos.0 += 0.5 * delta * dt * n.0;
+            la.curr_pos.1 += 0.5 * delta * dt * n.1;
         }
 
         if !lb.immovable {
-            let new_pos_x = lb.curr_pos.0 - 0.5 * delta * dt * n.0;
-            let new_pos_y = lb.curr_pos.1 - 0.5 * delta * dt * n.1;
-            lb.curr_pos = (new_pos_x, new_pos_y);
+            lb.curr_pos.0 -= 0.5 * delta * dt * n.0;
+            lb.curr_pos.1 -= 0.5 * delta * dt * n.1;
         }
     }
 }
 
 pub struct Simulation {
-    pub nodes: Vec<Rc<RefCell<Node>>>,
+    pub nodes: Vec<Node>,
     pub links: Vec<Link>,
 }
 
@@ -86,26 +89,21 @@ impl Simulation {
     ) {
         for x in 0..x_count {
             for y in 0..y_count {
-                self.nodes.push(Rc::new(RefCell::new(Node::new(
+                self.nodes.push(Node::new(
                     (x as f32) * x_gap + x_pad,
                     (y as f32) * y_gap + y_pad,
                     y == 0 && x % 5 == 0,
-                ))));
+                ));
+
+                let curr_index = self.nodes.len() - 1;
 
                 if y != 0 {
-                    self.links.push(Link {
-                        a: Rc::clone(&self.nodes[self.nodes.len() - 1]),
-                        b: Rc::clone(&self.nodes[self.nodes.len() - 2]),
-                        dist: DIST,
-                    })
+                    self.links.push(Link::new(curr_index, curr_index - 1, DIST))
                 }
 
                 if x != 0 {
-                    self.links.push(Link::new(
-                        Rc::clone(&self.nodes[self.nodes.len() - 1]),
-                        Rc::clone(&self.nodes[self.nodes.len() - 1 - (x_count as usize)]),
-                        DIST,
-                    ));
+                    self.links
+                        .push(Link::new(curr_index, curr_index - (x_count as usize), DIST));
                 }
             }
         }
@@ -113,12 +111,12 @@ impl Simulation {
 
     pub fn update(&mut self, dt: f32) {
         for node in &mut self.nodes {
-            node.borrow_mut().update(dt);
+            node.update(dt);
         }
 
         for link in &mut self.links {
             for _ in 0..5 {
-                link.update(dt);
+                link.update(&mut self.nodes, dt);
             }
         }
     }
